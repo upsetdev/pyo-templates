@@ -1,0 +1,80 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: ClickHouse
+  description: Column-oriented database for fast analytics over large event tables.
+  category: databases
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://clickhouse.com
+  version: 1.0.0
+  appVersion: "24.8"
+  minPyoVersion: 0.1.0
+  kind: service
+  generate:
+    - CLICKHOUSE_PASSWORD
+  fields:
+    - key: user
+      label: User
+      type: text
+      default: app
+      required: true
+      envKey: CLICKHOUSE_USER
+    - key: database
+      label: Initial database
+      type: text
+      default: app
+      required: true
+      envKey: CLICKHOUSE_DB
+    - key: password
+      label: Password
+      type: password
+      required: false
+      sensitive: true
+      envKey: CLICKHOUSE_PASSWORD
+      help: Leave empty to generate one.
+  hints:
+    - Query over HTTP on 8123, or with clickhouse-client on 9000.
+    - "Give it memory: large queries fail when they hit the limit."
+services:
+  clickhouse:
+    image: docker.io/clickhouse/clickhouse-server:24.8@sha256:1ffa82edee000a42c09313bd9f1293d94c570aee74babc1b3ca9983a35fa597b
+    environment:
+      CLICKHOUSE_USER: app
+      CLICKHOUSE_PASSWORD:
+      CLICKHOUSE_DB: app
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - data:/var/lib/clickhouse
+    expose:
+      - "8123"
+      - "9000"
+    healthcheck:
+      start_period: 15s
+      interval: 10s
+      x-pyo:
+        http:
+          path: /ping
+          port: 8123
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+        limits:
+          cpus: "2"
+          memory: 2G
+    x-pyo:
+      expose:
+        - name: http
+          port: 8123
+          as: internal
+          protocol: http
+        - name: native
+          port: 9000
+          as: internal
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 20

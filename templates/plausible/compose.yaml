@@ -1,0 +1,141 @@
+# yaml-language-server: $schema=../../schema.json
+# From Plausible's own compose file (github.com/plausible/community-edition):
+# the same images, ClickHouse settings and variables.
+x-pyo:
+  name: Plausible
+  description: Lightweight, cookie-free website analytics (Community Edition), on Postgres with ClickHouse for events.
+  category: monitoring
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://plausible.io/self-hosted-web-analytics
+  version: 1.0.0
+  appVersion: "3.2.1"
+  minPyoVersion: 0.1.0
+  kind: application
+  featured: true
+  generate:
+    - { key: SECRET_KEY_BASE, format: long }
+    - { key: TOTP_VAULT_KEY, format: base64-32 }
+  # Direct, not pooled: Ecto uses prepared statements and runs migrations.
+  database:
+    engine: postgres
+    extensions: [citext]
+    env:
+      DATABASE_URL: DATABASE_URL_DIRECT
+  hints:
+    - "Needs a domain: it's BASE_URL. Register the first account there; it becomes the owner."
+    - "For password resets and reports, set MAILER_EMAIL and SMTP_HOST_ADDR, SMTP_HOST_PORT, SMTP_USER_NAME and SMTP_USER_PWD."
+    - Events are kept by its own ClickHouse service, deployed with it.
+
+services:
+  plausible:
+    image: ghcr.io/plausible/community-edition:v3.2.1@sha256:33e60bfb40f2df5da00f8753b76fad04f67dba3abe6d73eb516e440e3fb62985
+    # Pyo's database already exists, so only migrations run before it starts.
+    command: [ "sh", "-c", "/entrypoint.sh db migrate && /entrypoint.sh run" ]
+    environment:
+      # Its address: the domain it's given. ($$ is a plain $.)
+      BASE_URL: $${{self.PUBLIC_URL}}
+      SECRET_KEY_BASE:
+      TOTP_VAULT_KEY:
+      TMPDIR: /var/lib/plausible/tmp
+      HTTP_PORT: "8000"
+      CLICKHOUSE_DATABASE_URL: http://plausible-events:8123/plausible_events_db
+      # Only for docker compose: Pyo connects its own database instead.
+      DATABASE_URL: postgres://postgres:postgres@db:5432/plausible_db
+    volumes:
+      - data:/var/lib/plausible
+    expose: [ "8000" ]
+    healthcheck:
+      start_period: 60s
+      interval: 10s
+      x-pyo: { http: { path: /api/system/health/live, port: 8000 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.25", memory: 512M }
+        limits: { cpus: "1", memory: 1G }
+    x-pyo:
+      expose:
+        - { name: http, port: 8000, as: http }
+    # docker compose only: retries until the local database is up.
+    restart: unless-stopped
+
+  # ClickHouse for the events, with Plausible's settings for small servers
+  # (its clickhouse/*.xml files), written before the server starts.
+  plausible-events:
+    image: docker.io/clickhouse/clickhouse-server:24.12-alpine@sha256:cd450891db46cc6ffe313ca2b0fb7dbfb897a6873ca74a724cbe050a2cf62621
+    entrypoint:
+      - sh
+      - -c
+      - |
+        cat > /etc/clickhouse-server/config.d/plausible.xml <<'XML'
+        <clickhouse>
+          <listen_host>0.0.0.0</listen_host>
+          <mark_cache_size>524288000</mark_cache_size>
+          <logger><level>warning</level><console>true</console></logger>
+          <query_log replace="1">
+            <database>system</database>
+            <table>query_log</table>
+            <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+            <engine>ENGINE = MergeTree PARTITION BY event_date ORDER BY (event_time) TTL event_date + interval 30 day SETTINGS ttl_only_drop_parts=1</engine>
+          </query_log>
+          <metric_log remove="remove" />
+          <asynchronous_metric_log remove="remove" />
+          <query_thread_log remove="remove" />
+          <text_log remove="remove" />
+          <trace_log remove="remove" />
+          <session_log remove="remove" />
+          <part_log remove="remove" />
+        </clickhouse>
+        XML
+        cat > /etc/clickhouse-server/users.d/plausible.xml <<'XML'
+        <clickhouse>
+          <profiles>
+            <default>
+              <max_threads>1</max_threads>
+              <max_block_size>8192</max_block_size>
+              <max_download_threads>1</max_download_threads>
+              <input_format_parallel_parsing>0</input_format_parallel_parsing>
+              <output_format_parallel_formatting>0</output_format_parallel_formatting>
+            </default>
+          </profiles>
+        </clickhouse>
+        XML
+        exec /entrypoint.sh
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: "1"
+      # Made on its first start (Plausible's createdb would, but Pyo's
+      # Postgres user can't create databases, so it doesn't run).
+      CLICKHOUSE_DB: plausible_events_db
+    volumes:
+      - events:/var/lib/clickhouse
+    expose: [ "8123" ]
+    healthcheck:
+      start_period: 30s
+      interval: 10s
+      x-pyo: { http: { path: /ping, port: 8123 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.25", memory: 512M }
+        limits: { cpus: "1", memory: 2G }
+    x-pyo:
+      expose:
+        - { name: http, port: 8123, as: internal, protocol: http }
+    restart: unless-stopped
+
+  # Try it locally: docker compose --profile local up, with SECRET_KEY_BASE
+  # (openssl rand -base64 48) and TOTP_VAULT_KEY (openssl rand -base64 32).
+  db:
+    image: docker.io/library/postgres:16-alpine@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139
+    profiles: [ local ]
+    environment:
+      POSTGRES_DB: plausible_db
+      POSTGRES_PASSWORD: postgres
+
+volumes:
+  data:
+    x-pyo: { sizeGi: 1 }
+  events:
+    x-pyo: { sizeGi: 10 }

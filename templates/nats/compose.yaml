@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: NATS
+  description: Lightweight, high-throughput messaging for services and edge devices.
+  category: messaging
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://nats.io
+  version: 1.0.0
+  appVersion: "2.10"
+  minPyoVersion: 0.1.0
+  kind: service
+  hints:
+    - Core NATS keeps messages in memory; JetStream persistence isn't enabled.
+services:
+  nats:
+    image: docker.io/library/nats:2.10@sha256:5498ba57b9471840be3d15b033a4eec554d1c02fa6c2cc0ca2d888637f6c6e2f
+    expose:
+      - "4222"
+      - "8222"
+    healthcheck:
+      start_period: 5s
+      interval: 10s
+      x-pyo:
+        http:
+          path: /healthz
+          port: 8222
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    x-pyo:
+      expose:
+        - name: client
+          port: 4222
+          as: internal
+        - name: monitor
+          port: 8222
+          as: internal
+          protocol: http

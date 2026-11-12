@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: CoreDNS
+  description: Authoritative or forwarding DNS server configured with a Corefile.
+  category: networking
+  tier: official
+  author: upsetdev
+  homepage: https://coredns.io
+  version: 1.0.0
+  appVersion: "1.12.0"
+  minPyoVersion: 0.1.0
+  kind: service
+  fields:
+    - key: zone
+      label: Zone
+      type: text
+      default: home.arpa
+      required: true
+      help: Zone served from the Corefile.
+    - key: forward
+      label: Forward to
+      type: text
+      default: 1.1.1.1 9.9.9.9
+      required: true
+  hints:
+    - This is separate from the cluster's own CoreDNS in kube-system.
+services:
+  coredns:
+    image: docker.io/coredns/coredns:1.12.0@sha256:40384aa1f5ea6bfdc77997d243aec73da05f27aed0c5e9d65bfa98933c519d97
+    expose:
+      - 53/udp
+      - "53"
+    healthcheck:
+      start_period: 10s
+      interval: 10s
+      x-pyo:
+        http:
+          path: /health
+          port: 8080
+    deploy:
+      replicas: 2
+      resources:
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+        limits:
+          cpus: "0.2"
+          memory: 128M
+    x-pyo:
+      expose:
+        - name: dns-udp
+          port: 53
+          as: internal
+          protocol: udp
+        - name: dns-tcp
+          port: 53
+          as: internal

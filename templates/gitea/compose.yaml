@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Gitea
+  description: Lightweight Git hosting with pull requests, issues and a package registry.
+  category: developer-tools
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://about.gitea.com
+  version: 1.0.0
+  appVersion: "1.22.6"
+  minPyoVersion: 0.1.0
+  kind: service
+  hints:
+    - Finish setup in the web installer on first visit; SQLite works out of the box.
+    - Git over SSH needs a NodePort or LoadBalancer on the ssh port.
+services:
+  gitea:
+    image: docker.io/gitea/gitea:1.22.6@sha256:538658de667c5d098a274f2f63aa6ec891d88f670cdd5282cf27221ba747dda4
+    environment:
+      USER_UID: "1000"
+      USER_GID: "1000"
+    volumes:
+      - data:/data
+    expose:
+      - "3000"
+      - "22"
+    healthcheck:
+      start_period: 20s
+      interval: 10s
+      x-pyo:
+        http:
+          path: /api/healthz
+          port: 3000
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.1"
+          memory: 256M
+        limits:
+          cpus: "1"
+          memory: 512M
+    x-pyo:
+      expose:
+        - name: http
+          port: 3000
+          as: http
+        - name: ssh
+          port: 22
+          as: internal
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 10

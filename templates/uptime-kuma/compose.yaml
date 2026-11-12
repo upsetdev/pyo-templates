@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Uptime Kuma
+  description: Self-hosted uptime monitoring with status pages and notifications.
+  category: monitoring
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://uptime.kuma.pet
+  version: 1.0.0
+  appVersion: "1.23.16"
+  minPyoVersion: 0.1.0
+  kind: service
+  featured: true
+  hints:
+    - Create the admin account on first visit; add a domain before you open it.
+    - Uses SQLite, so keep it at one replica.
+services:
+  uptime-kuma:
+    image: docker.io/louislam/uptime-kuma:1.23.16@sha256:431fee3be822b04861cf0e35daf4beef6b7cb37391c5f26c3ad6e12ce280fe18
+    volumes:
+      - data:/app/data
+    expose:
+      - "3001"
+    healthcheck:
+      start_period: 20s
+      interval: 10s
+      x-pyo:
+        http:
+          path: /
+          port: 3001
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    x-pyo:
+      expose:
+        - name: http
+          port: 3001
+          as: http
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 2

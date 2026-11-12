@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Mattermost
+  description: Team chat with channels, threads, calls and integrations (Team Edition), on Postgres.
+  category: messaging
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://mattermost.com
+  version: 1.0.0
+  appVersion: "12.1.0"
+  minPyoVersion: 0.1.0
+  kind: application
+  # Direct, not pooled: it runs its migrations on start.
+  database:
+    engine: postgres
+    env:
+      MM_SQLSETTINGS_DATASOURCE: DATABASE_URL_DIRECT
+  hints:
+    - "Needs a domain: it's the site URL. Create the first account there; it becomes the system admin."
+    - Uploads and search indexes are kept on its volume; plugins installed later are added again on restart.
+
+services:
+  mattermost:
+    image: docker.io/mattermost/mattermost-team-edition:12.1.0@sha256:35927b9c535a9eb74f0e45385d3fe5d8308b16e0464031f157a834da8af3ee73
+    environment:
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SERVICESETTINGS_SITEURL: $${{self.PUBLIC_URL}}
+      MM_BLEVESETTINGS_INDEXDIR: /mattermost/data/bleve-indexes
+      TZ: UTC
+    volumes:
+      - data:/mattermost/data
+    expose: [ "8065" ]
+    healthcheck:
+      start_period: 60s
+      interval: 15s
+      x-pyo: { http: { path: /api/v4/system/ping, port: 8065 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.5", memory: 512M }
+        limits: { cpus: "2", memory: 2G }
+    x-pyo:
+      expose:
+        - { name: http, port: 8065, as: http }
+
+volumes:
+  data:
+    x-pyo: { sizeGi: 10 }

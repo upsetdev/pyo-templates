@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: code-server
+  description: VS Code in the browser, on your own server, with your files on a volume.
+  category: developer-tools
+  tier: official
+  author: upsetdev
+  homepage: https://coder.com/docs/code-server
+  version: 1.0.0
+  appVersion: "4.145.2"
+  minPyoVersion: 0.1.0
+  kind: application
+  generate:
+    - PASSWORD
+  fields:
+    - key: password
+      label: Password
+      type: password
+      required: false
+      sensitive: true
+      envKey: PASSWORD
+      help: Leave empty to generate one; it's in the service's variables.
+  hints:
+    - Add a domain, then sign in with PASSWORD from its variables.
+    - Your projects and settings are kept in /home/coder on its volume.
+
+services:
+  code-server:
+    image: docker.io/codercom/code-server:4.145.2@sha256:09565f9e07f5624554e295e8bab0e2fec4a7c533eb3cff459ed6596a4d3d7c1c
+    environment:
+      PASSWORD:
+    volumes:
+      - data:/home/coder
+    expose: [ "8080" ]
+    healthcheck:
+      start_period: 10s
+      interval: 10s
+      x-pyo: { http: { path: /healthz, port: 8080 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.25", memory: 512M }
+        limits: { cpus: "2", memory: 4G }
+    x-pyo:
+      expose:
+        - { name: http, port: 8080, as: http }
+
+volumes:
+  data:
+    x-pyo: { sizeGi: 10 }

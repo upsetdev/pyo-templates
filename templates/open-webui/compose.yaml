@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Open WebUI
+  description: A chat interface for your own models, served by Ollama or any OpenAI-compatible API such as vLLM.
+  category: ai
+  tier: official
+  author: upsetdev
+  homepage: https://openwebui.com
+  version: 1.0.0
+  appVersion: "0.13.0"
+  minPyoVersion: 0.1.0
+  kind: service
+  generate:
+    - WEBUI_SECRET_KEY
+  fields:
+    - key: ollama-url
+      label: Ollama address
+      type: text
+      default: http://ollama:11434
+      required: false
+      envKey: OLLAMA_BASE_URL
+      help: Your Ollama service, by its name in this project.
+    - key: openai-url
+      label: OpenAI-compatible API
+      type: text
+      default: ""
+      required: false
+      envKey: OPENAI_API_BASE_URL
+      help: e.g. http://vllm:8000/v1 for a vLLM service.
+  hints:
+    - "The first account to sign up becomes its admin: sign up right after deploying."
+    - It runs on CPU; the models it talks to can use GPUs.
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:v0.13.0@sha256:2272b0fb7c8783a016bcc179abb467cfa34590c99c5e6560fe0e9155b4820a09
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      OPENAI_API_BASE_URL: ""
+      WEBUI_SECRET_KEY:
+    volumes:
+      - data:/app/backend/data
+    expose:
+      - "8080"
+    healthcheck:
+      start_period: 30s
+      interval: 15s
+      x-pyo:
+        http:
+          path: /health
+          port: 8080
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+        limits:
+          cpus: "2"
+          memory: 2G
+    x-pyo:
+      expose:
+        - name: http
+          port: 8080
+          as: http
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 5

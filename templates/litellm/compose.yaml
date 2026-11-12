@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: LiteLLM
+  description: One OpenAI-compatible gateway to 100+ model providers, with keys, budgets and usage tracking.
+  category: ai
+  tier: official
+  author: upsetdev
+  homepage: https://docs.litellm.ai
+  version: 1.0.0
+  appVersion: "1.83.14"
+  minPyoVersion: 0.1.0
+  kind: application
+  generate:
+    # Its keys start with sk-.
+    - { key: LITELLM_MASTER_KEY, format: long, prefix: sk- }
+    - { key: LITELLM_SALT_KEY, format: long, prefix: sk- }
+  # Direct, not pooled: Prisma runs its migrations on start.
+  database:
+    engine: postgres
+    env:
+      DATABASE_URL: DATABASE_URL_DIRECT
+  hints:
+    - Sign in to the admin UI at /ui with the user admin and LITELLM_MASTER_KEY as the password; add models and keys there.
+    - Keep LITELLM_SALT_KEY as it is; it encrypts the provider keys you save.
+    - Other services call it at http://<service>:4000, like the OpenAI API.
+
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:v1.83.14-stable@sha256:c81eb79cd4333c6cfe374c0ec929110fd23f0ee5f7fd198855a6fbddc77b83ba
+    environment:
+      LITELLM_MASTER_KEY:
+      LITELLM_SALT_KEY:
+      STORE_MODEL_IN_DB: "True"
+    expose: [ "4000" ]
+    healthcheck:
+      start_period: 60s
+      interval: 15s
+      x-pyo: { http: { path: /health/liveliness, port: 4000 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.25", memory: 512M }
+        limits: { cpus: "2", memory: 2G }
+    x-pyo:
+      expose:
+        - { name: http, port: 4000, as: http }

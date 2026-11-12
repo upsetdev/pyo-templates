@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Metabase
+  description: Ask questions of your databases and share dashboards, no SQL required.
+  category: monitoring
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://www.metabase.com
+  version: 1.0.0
+  appVersion: "0.52.4"
+  minPyoVersion: 0.1.0
+  kind: service
+  hints:
+    - Its own settings live in an embedded H2 file on the volume.
+    - Takes a minute or two to start the first time.
+services:
+  metabase:
+    image: docker.io/metabase/metabase:v0.52.4@sha256:ea0229a63116ea625ef09085a84ee0d2618311fd34a6e72cc527ae2eb003a5f9
+    environment:
+      MB_DB_FILE: /metabase-data/metabase.db
+    volumes:
+      - data:/metabase-data
+    expose:
+      - "3000"
+    healthcheck:
+      start_period: 60s
+      interval: 10s
+      x-pyo:
+        http:
+          path: /api/health
+          port: 3000
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+        limits:
+          cpus: "2"
+          memory: 2G
+    x-pyo:
+      expose:
+        - name: http
+          port: 3000
+          as: http
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 2

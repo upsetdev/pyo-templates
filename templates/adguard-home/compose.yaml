@@ -1,0 +1,69 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: AdGuard Home
+  description: Network-wide DNS filtering with a web admin interface.
+  category: networking
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://adguard.com/adguard-home/overview.html
+  version: 1.0.0
+  appVersion: "0.107.55"
+  minPyoVersion: 0.1.0
+  kind: service
+  fields:
+    - key: upstream
+      label: Upstream DNS
+      type: select
+      default: https://dns.quad9.net/dns-query
+      options:
+        - https://dns.quad9.net/dns-query
+        - https://cloudflare-dns.com/dns-query
+        - tls://dns.google
+      required: true
+  hints:
+    - "DNS answers inside the cluster. Port 53 can't be a public port: the servers use it for their own lookups."
+    - An HTTP domain can't carry DNS traffic; use the admin page's DNS-over-HTTPS address through a domain instead.
+services:
+  adguard-home:
+    image: docker.io/adguard/adguardhome:v0.107.55@sha256:2979cc78a28aceb77f90980a5440578dbb7bc406dffe261e9ae402750193bde0
+    volumes:
+      - data:/opt/adguardhome/work
+    expose:
+      - 53/udp
+      - "53"
+      - "3000"
+    healthcheck:
+      start_period: 10s
+      interval: 10s
+      x-pyo:
+        http:
+          path: /
+          port: 3000
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    x-pyo:
+      workload: Deployment
+      expose:
+        - name: dns-udp
+          port: 53
+          as: internal
+          protocol: udp
+        - name: dns-tcp
+          port: 53
+          as: internal
+        - name: admin
+          port: 3000
+          as: internal
+          protocol: http
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 1

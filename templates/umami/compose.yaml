@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Umami
+  description: Simple, privacy-focused website analytics without cookies, on a Postgres database Pyo runs.
+  category: monitoring
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://umami.is
+  version: 1.0.0
+  appVersion: "3.4.1"
+  minPyoVersion: 0.1.0
+  kind: application
+  featured: true
+  generate:
+    - APP_SECRET
+    - { key: TWO_FACTOR_ENCRYPTION_KEY, format: hex-32 }
+  # Direct, not pooled: Prisma runs its migrations on every start, and they
+  # need a session of their own.
+  database:
+    engine: postgres
+    extensions: [pgcrypto]
+    env:
+      DATABASE_URL: DATABASE_URL_DIRECT
+  hints:
+    - "Sign in as admin with the password umami, then change it right away under Settings › Profile."
+    - Add a domain, then add your sites and their tracking script.
+
+services:
+  umami:
+    image: ghcr.io/umami-software/umami:3.4.1@sha256:e69d1a7932e9dab0fc523edc7be1f3a53f3c261f57856fc2167ae74a8fc022e8
+    environment:
+      # Only for docker compose: Pyo connects its own database instead.
+      DATABASE_URL: postgresql://umami:umami@db:5432/umami
+      APP_SECRET:
+      TWO_FACTOR_ENCRYPTION_KEY:
+    expose: [ "3000" ]
+    healthcheck:
+      start_period: 30s
+      interval: 10s
+      x-pyo: { http: { path: /api/heartbeat, port: 3000 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.25", memory: 256M }
+        limits: { cpus: "1", memory: 1G }
+    x-pyo:
+      expose:
+        - { name: http, port: 3000, as: http }
+    # docker compose only: retries until the local database is up.
+    restart: unless-stopped
+
+  # Try it locally: APP_SECRET=x TWO_FACTOR_ENCRYPTION_KEY=$(openssl rand -hex 32) \
+  #   docker compose --profile local up
+  db:
+    image: docker.io/library/postgres:17-alpine@sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0ef0302ac
+    profiles: [ local ]
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: umami
+      POSTGRES_PASSWORD: umami
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U umami" ]
+      interval: 5s

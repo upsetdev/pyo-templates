@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Nextcloud
+  description: Files, calendars, contacts and office documents in your own cloud, on Postgres with KV caching.
+  category: storage
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://nextcloud.com
+  version: 1.0.0
+  appVersion: "35.0.2"
+  minPyoVersion: 0.1.0
+  kind: application
+  featured: true
+  generate:
+    - NEXTCLOUD_ADMIN_PASSWORD
+  fields:
+    - key: admin
+      label: Admin user
+      type: text
+      default: admin
+      required: true
+      envKey: NEXTCLOUD_ADMIN_USER
+    - key: password
+      label: Admin password
+      type: password
+      required: false
+      sensitive: true
+      envKey: NEXTCLOUD_ADMIN_PASSWORD
+      help: Leave empty to generate one.
+  # The image installs itself from these on its first start. Postgres's
+  # parts go straight to the primary; KV caches and holds file locks.
+  databases:
+    - engine: postgres
+      env:
+        POSTGRES_HOST: POSTGRES_HOST:POSTGRES_PORT
+        POSTGRES_DB: POSTGRES_DATABASE
+        POSTGRES_USER: POSTGRES_USER
+        POSTGRES_PASSWORD: POSTGRES_PASSWORD
+    - engine: kv
+      env:
+        REDIS_HOST: REDIS_HOST
+        REDIS_HOST_PORT: REDIS_PORT
+        REDIS_HOST_PASSWORD: REDIS_PASSWORD
+  hints:
+    - "Needs a domain: add it before the first start, then sign in as the admin user with NEXTCLOUD_ADMIN_PASSWORD."
+    - The first start installs Nextcloud and takes a few minutes.
+    - Files are kept on its volume; size it for what you'll store.
+
+services:
+  nextcloud:
+    image: docker.io/library/nextcloud:35.0.2-apache@sha256:786c102155d2717ba0f53a62b3fdd7a1354edc48e800b94dbe32294d9a5752a2
+    environment:
+      NEXTCLOUD_ADMIN_USER: admin
+      NEXTCLOUD_ADMIN_PASSWORD:
+      NEXTCLOUD_TRUSTED_DOMAINS: $${{self.PUBLIC_DOMAIN}}
+      OVERWRITEPROTOCOL: https
+      OVERWRITECLIURL: $${{self.PUBLIC_URL}}
+      # The Gateway, inside the cluster.
+      TRUSTED_PROXIES: 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+      PHP_MEMORY_LIMIT: 512M
+      PHP_UPLOAD_LIMIT: 1G
+    volumes:
+      - data:/var/www/html
+    expose: [ "80" ]
+    healthcheck:
+      start_period: 180s
+      interval: 15s
+      # A port check: /status.php answers 400 to the kubelet, whose Host
+      # (the pod's IP) isn't a trusted domain. Apache starts once installed.
+      x-pyo: { tcp: 80 }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.25", memory: 512M }
+        limits: { cpus: "2", memory: 2G }
+    x-pyo:
+      expose:
+        - { name: http, port: 80, as: http }
+
+volumes:
+  data:
+    x-pyo: { sizeGi: 20 }

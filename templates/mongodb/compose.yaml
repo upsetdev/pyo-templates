@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: MongoDB
+  description: Document database, single replica, with authentication enabled.
+  category: databases
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://www.mongodb.com
+  version: 1.0.0
+  appVersion: "8.0"
+  minPyoVersion: 0.1.0
+  kind: service
+  versions:
+    - tag: "7.0"
+      digest: sha256:8bb4442761a63a8dda452744082cdac9644b429807eb977b42324a63cef59ca4
+  generate:
+    - MONGO_INITDB_ROOT_PASSWORD
+  fields:
+    - key: user
+      label: Root user
+      type: text
+      default: root
+      required: true
+      envKey: MONGO_INITDB_ROOT_USERNAME
+    - key: password
+      label: Root password
+      type: password
+      required: false
+      sensitive: true
+      envKey: MONGO_INITDB_ROOT_PASSWORD
+      help: Leave empty to generate one.
+  hints:
+    - Single-server deployment; replica sets are not configured.
+    - Back up with mongodump or volume snapshots.
+services:
+  mongodb:
+    image: docker.io/library/mongo:8.0@sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD:
+    volumes:
+      - data:/data/db
+    expose:
+      - "27017"
+    healthcheck:
+      start_period: 20s
+      interval: 10s
+      x-pyo:
+        tcp: 27017
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+        limits:
+          cpus: "1"
+          memory: 2G
+    x-pyo:
+      expose:
+        - name: mongodb
+          port: 27017
+          as: internal
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 10

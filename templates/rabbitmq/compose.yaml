@@ -1,0 +1,69 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: RabbitMQ
+  description: Message broker for queues and pub/sub, with the management web UI.
+  category: messaging
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://www.rabbitmq.com
+  version: 1.0.0
+  appVersion: "4.0"
+  minPyoVersion: 0.1.0
+  kind: service
+  generate:
+    - RABBITMQ_DEFAULT_PASS
+  fields:
+    - key: user
+      label: User
+      type: text
+      default: app
+      required: true
+      envKey: RABBITMQ_DEFAULT_USER
+    - key: password
+      label: Password
+      type: password
+      required: false
+      sensitive: true
+      envKey: RABBITMQ_DEFAULT_PASS
+      help: Leave empty to generate one.
+  hints:
+    - AMQP clients connect on 5672; the management UI is on 15672.
+services:
+  rabbitmq:
+    image: docker.io/library/rabbitmq:4.0-management@sha256:f8196862986b771ddf0369c45b0801ee0c0ff09150891dc72826b8b4375fdd8b
+    environment:
+      RABBITMQ_DEFAULT_USER: app
+      RABBITMQ_DEFAULT_PASS:
+    volumes:
+      - data:/var/lib/rabbitmq
+    expose:
+      - "5672"
+      - "15672"
+    healthcheck:
+      start_period: 30s
+      interval: 10s
+      x-pyo:
+        tcp: 5672
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+        limits:
+          cpus: "1"
+          memory: 1G
+    x-pyo:
+      expose:
+        - name: amqp
+          port: 5672
+          as: internal
+        - name: management
+          port: 15672
+          as: internal
+          protocol: http
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 5

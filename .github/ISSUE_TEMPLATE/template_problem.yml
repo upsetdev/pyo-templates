@@ -1,0 +1,33 @@
+name: Template problem
+description: A template fails to deploy or doesn't work on Pyo.
+labels: [bug]
+body:
+  - type: input
+    id: template
+    attributes:
+      label: Template
+      description: The template's id, its folder under `templates/`.
+      placeholder: umami
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Pyo version
+      description: Shown under Settings → Updates, in the Version panel.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What failed
+      description: What you did, what happened, and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The service's logs or the deployment's error from the dashboard. Remove secrets.
+      render: shell

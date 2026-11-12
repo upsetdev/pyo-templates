@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=../../schema.json
+# BookStack has no image of its own; its docs point to LinuxServer.io's.
+x-pyo:
+  name: BookStack
+  description: Organize documentation into shelves, books and pages with a simple WYSIWYG editor, on MySQL.
+  category: web
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://www.bookstackapp.com
+  version: 1.0.0
+  appVersion: "26.09.2"
+  minPyoVersion: 0.1.0
+  kind: application
+  generate:
+    # Laravel's key: base64: and 32 random bytes.
+    - { key: APP_KEY, format: base64-32, prefix: "base64:" }
+  database:
+    engine: mysql
+    env:
+      DB_HOST: MYSQL_HOST
+      DB_PORT: MYSQL_PORT
+      DB_USERNAME: MYSQL_USER
+      DB_PASSWORD: MYSQL_PASSWORD
+      DB_DATABASE: MYSQL_DATABASE
+  hints:
+    - "Needs a domain: it's APP_URL. Sign in as admin@admin.com with the password password, then change both right away."
+    - Uploads and settings are kept on its volume.
+
+services:
+  bookstack:
+    image: docker.io/linuxserver/bookstack:v26.09.2-ls296@sha256:2ece67eeffcc8601f2c3d44c77d787ce49b1e0becfcb2c4bd8ce9b69fa8393ed
+    environment:
+      APP_URL: $${{self.PUBLIC_URL}}
+      APP_KEY:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+    volumes:
+      - data:/config
+    expose: [ "80" ]
+    healthcheck:
+      start_period: 60s
+      interval: 15s
+      x-pyo: { http: { path: /status, port: 80 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.1", memory: 256M }
+        limits: { cpus: "1", memory: 512M }
+    x-pyo:
+      expose:
+        - { name: http, port: 80, as: http }
+
+volumes:
+  data:
+    x-pyo: { sizeGi: 5 }

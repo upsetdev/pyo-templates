@@ -1,0 +1,82 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: WordPress
+  description: The WordPress site builder and blog, on a MySQL database Pyo runs.
+  category: web
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://wordpress.org
+  version: 1.0.0
+  appVersion: "7.1.4"
+  minPyoVersion: 0.1.0
+  kind: application
+  generate:
+    - WORDPRESS_AUTH_KEY
+    - WORDPRESS_SECURE_AUTH_KEY
+    - WORDPRESS_LOGGED_IN_KEY
+    - WORDPRESS_NONCE_KEY
+    - WORDPRESS_AUTH_SALT
+    - WORDPRESS_SECURE_AUTH_SALT
+    - WORDPRESS_LOGGED_IN_SALT
+    - WORDPRESS_NONCE_SALT
+  database:
+    engine: mysql
+    env:
+      WORDPRESS_DB_HOST: MYSQL_HOST:MYSQL_PORT
+      WORDPRESS_DB_USER: MYSQL_USER
+      WORDPRESS_DB_PASSWORD: MYSQL_PASSWORD
+      WORDPRESS_DB_NAME: MYSQL_DATABASE
+  hints:
+    - Add a domain, then finish the setup at its address.
+    - Themes, plugins and uploads (up to 64 MB) stay on its volume.
+    - Turn on the WAF in its Firewall tab to block common attacks.
+services:
+  wordpress:
+    image: docker.io/library/wordpress:7.1.4-php8.3-apache@sha256:9001ea7dafd2bc3f05d068e6413b0edd2a116eeed4dfe9e08b6bd718dee4960a
+    # Uploads up to 64 MB (PHP's default is 2 MB): Apache's -c sets PHP's limits.
+    command:
+      - apache2-foreground
+      - -c
+      - php_value upload_max_filesize 64M
+      - -c
+      - php_value post_max_size 64M
+    # Keys and salts, made once: the image writes wp-config.php again on every
+    # start, so without them every deploy would sign everyone out.
+    environment:
+      WORDPRESS_AUTH_KEY:
+      WORDPRESS_SECURE_AUTH_KEY:
+      WORDPRESS_LOGGED_IN_KEY:
+      WORDPRESS_NONCE_KEY:
+      WORDPRESS_AUTH_SALT:
+      WORDPRESS_SECURE_AUTH_SALT:
+      WORDPRESS_LOGGED_IN_SALT:
+      WORDPRESS_NONCE_SALT:
+    # Themes, plugins and uploads. WordPress itself comes from the image.
+    volumes:
+      - data:/var/www/html/wp-content
+    expose:
+      - "80"
+    healthcheck:
+      start_period: 20s
+      interval: 10s
+      x-pyo:
+        tcp: 80
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+        limits:
+          cpus: "1"
+          memory: 512M
+    x-pyo:
+      expose:
+        - name: http
+          port: 80
+          as: http
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 10

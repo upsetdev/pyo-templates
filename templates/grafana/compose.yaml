@@ -1,0 +1,69 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Grafana
+  description: Dashboards for Prometheus and other data sources.
+  category: monitoring
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://grafana.com/oss/grafana/
+  version: 1.0.0
+  appVersion: "11.4.0"
+  minPyoVersion: 0.1.0
+  kind: service
+  featured: true
+  generate:
+    - GF_SECURITY_ADMIN_PASSWORD
+  fields:
+    - key: adminUser
+      label: Admin user
+      type: text
+      default: admin
+      required: true
+      envKey: GF_SECURITY_ADMIN_USER
+    - key: password
+      label: Admin password
+      type: password
+      required: false
+      sensitive: true
+      envKey: GF_SECURITY_ADMIN_PASSWORD
+      help: Leave empty to generate one.
+  hints:
+    - Add Prometheus as a data source using its internal hostname.
+services:
+  grafana:
+    image: docker.io/grafana/grafana:11.4.0@sha256:d8ea37798ccc41061a62ab080f2676dda6bf7815558499f901bdb0f533a456fb
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD:
+    volumes:
+      - data:/var/lib/grafana
+    expose:
+      - "3000"
+    healthcheck:
+      start_period: 10s
+      interval: 10s
+      x-pyo:
+        http:
+          path: /api/health
+          port: 3000
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.1"
+          memory: 256M
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    x-pyo:
+      workload: Deployment
+      expose:
+        - name: http
+          port: 3000
+          as: http
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 2
+      required: false

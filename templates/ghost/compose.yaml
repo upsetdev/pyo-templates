@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Ghost
+  description: Publishing platform for blogs and newsletters, on a MySQL database Pyo runs.
+  category: web
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://ghost.org
+  version: 1.0.0
+  appVersion: "5.130.6"
+  minPyoVersion: 0.1.0
+  kind: application
+  database:
+    engine: mysql
+    env:
+      database__connection__host: MYSQL_HOST
+      database__connection__port: MYSQL_PORT
+      database__connection__user: MYSQL_USER
+      database__connection__password: MYSQL_PASSWORD
+      database__connection__database: MYSQL_DATABASE
+  hints:
+    - "Needs a domain: it's the site's address. Create the admin account at /ghost."
+    - For newsletters and sign-ups, add mail__transport=SMTP and mail__options__* variables.
+services:
+  ghost:
+    image: docker.io/library/ghost:5.130.6@sha256:3ffcb8f2f1f808806e7a0f694a2b130cd78652a26b4337b33fe7e249ce58665a
+    environment:
+      NODE_ENV: production
+      database__client: mysql
+      # Its address: the domain it's given, so it needs one. ($$ is a plain $.)
+      url: $${{self.PUBLIC_URL}}
+    # Themes, images and settings.
+    volumes:
+      - data:/var/lib/ghost/content
+    expose:
+      - "2368"
+    healthcheck:
+      start_period: 30s
+      interval: 10s
+      x-pyo:
+        tcp: 2368
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+        limits:
+          cpus: "1"
+          memory: 1G
+    x-pyo:
+      expose:
+        - name: http
+          port: 2368
+          as: http
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 5

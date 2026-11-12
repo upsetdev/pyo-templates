@@ -1,0 +1,73 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Paperless-ngx
+  description: Scan, OCR, index and archive your paper documents, searchable from the browser.
+  category: storage
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://docs.paperless-ngx.com
+  version: 1.0.0
+  appVersion: "2.20.4"
+  minPyoVersion: 0.1.0
+  kind: application
+  generate:
+    - { key: PAPERLESS_SECRET_KEY, format: long }
+    - PAPERLESS_ADMIN_PASSWORD
+  fields:
+    - key: admin
+      label: Admin user
+      type: text
+      default: admin
+      required: true
+      envKey: PAPERLESS_ADMIN_USER
+  # Postgres one part at a time, straight to the primary; KV is the task
+  # queue its workers share.
+  databases:
+    - engine: postgres
+      env:
+        PAPERLESS_DBHOST: POSTGRES_HOST
+        PAPERLESS_DBPORT: POSTGRES_PORT
+        PAPERLESS_DBUSER: POSTGRES_USER
+        PAPERLESS_DBPASS: POSTGRES_PASSWORD
+        PAPERLESS_DBNAME: POSTGRES_DATABASE
+    - engine: kv
+      env:
+        PAPERLESS_REDIS: REDIS_URL
+  hints:
+    - Add a domain, then sign in as the admin user with PAPERLESS_ADMIN_PASSWORD from its variables.
+    - Documents, thumbnails and the search index are kept on its volume.
+    - "Office files and e-mail need Gotenberg and Tika: deploy them as images and set PAPERLESS_TIKA_ENABLED, PAPERLESS_TIKA_ENDPOINT and PAPERLESS_TIKA_GOTENBERG_ENDPOINT."
+
+services:
+  paperless-ngx:
+    image: ghcr.io/paperless-ngx/paperless-ngx:2.20.4@sha256:06ca6a6c2a21cfebcc7c5f2e0d38f892dba4bcb090b8781a55d003c63cce386a
+    environment:
+      PAPERLESS_SECRET_KEY:
+      PAPERLESS_URL: $${{self.PUBLIC_URL}}
+      PAPERLESS_ADMIN_USER: admin
+      PAPERLESS_ADMIN_PASSWORD:
+      # Everything on the one volume.
+      PAPERLESS_DATA_DIR: /usr/src/paperless/data
+      PAPERLESS_MEDIA_ROOT: /usr/src/paperless/data/media
+      PAPERLESS_CONSUMPTION_DIR: /usr/src/paperless/data/consume
+      PAPERLESS_TIME_ZONE: UTC
+    volumes:
+      - data:/usr/src/paperless/data
+    expose: [ "8000" ]
+    healthcheck:
+      start_period: 90s
+      interval: 15s
+      x-pyo: { http: { path: /, port: 8000 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.5", memory: 1G }
+        limits: { cpus: "2", memory: 2G }
+    x-pyo:
+      expose:
+        - { name: http, port: 8000, as: http }
+
+volumes:
+  data:
+    x-pyo: { sizeGi: 20 }

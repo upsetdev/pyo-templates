@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Stirling-PDF
+  description: Merge, split, convert, compress and sign PDFs in your browser, processed on your own server.
+  category: other
+  tier: official
+  author: upsetdev
+  homepage: https://www.stirlingpdf.com
+  version: 1.0.0
+  appVersion: "3.3.0"
+  minPyoVersion: 0.1.0
+  kind: application
+  hints:
+    - Add a domain to open it. Files are processed and then removed; nothing is kept.
+    - Large files and OCR need memory; raise the limit if jobs fail.
+
+services:
+  stirling-pdf:
+    image: docker.io/stirlingtools/stirling-pdf:3.3.0@sha256:ed7b1775c6706b5e5ea24fa6155f078eff1027bd35a17d21834e4407036025e6
+    environment:
+      # Its own settings and pipelines, on the volume.
+      SECURITY_ENABLELOGIN: "false"
+    volumes:
+      - data:/configs
+    expose: [ "8080" ]
+    healthcheck:
+      start_period: 60s
+      interval: 15s
+      x-pyo: { http: { path: /api/v1/info/status, port: 8080 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.25", memory: 512M }
+        limits: { cpus: "2", memory: 2G }
+    x-pyo:
+      expose:
+        - { name: http, port: 8080, as: http }
+
+volumes:
+  data:
+    x-pyo: { sizeGi: 1 }

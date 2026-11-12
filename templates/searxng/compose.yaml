@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: SearXNG
+  description: Privacy-respecting metasearch engine that queries many search engines without tracking you.
+  category: web
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://docs.searxng.org
+  version: 1.0.0
+  minPyoVersion: 0.1.0
+  kind: application
+  generate:
+    - { key: SEARXNG_SECRET, format: long }
+  hints:
+    - Add a domain to open it.
+    - Its bot limiter is off; it needs a KV database (SEARXNG_VALKEY_URL) and a settings.yml change to turn on.
+
+services:
+  searxng:
+    image: docker.io/searxng/searxng:2026.11.9-57ff753ad@sha256:287af61f1a13e86d02974fcde91a3413a9945788de38b61ffbc491d81a19bcc2
+    environment:
+      SEARXNG_SECRET:
+      SEARXNG_BASE_URL: $${{self.PUBLIC_URL}}/
+    expose: [ "8080" ]
+    healthcheck:
+      start_period: 10s
+      interval: 10s
+      x-pyo: { http: { path: /healthz, port: 8080 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.1", memory: 128M }
+        limits: { cpus: "1", memory: 512M }
+    x-pyo:
+      expose:
+        - { name: http, port: 8080, as: http }

@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Forgejo
+  description: Lightweight, community-run Git hosting with pull requests, issues, packages and Actions.
+  category: developer-tools
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://forgejo.org
+  version: 1.0.0
+  appVersion: "13.0.2"
+  minPyoVersion: 0.1.0
+  kind: application
+  database:
+    engine: postgres
+    env:
+      FORGEJO__database__HOST: POSTGRES_HOST:POSTGRES_PORT
+      FORGEJO__database__NAME: POSTGRES_DATABASE
+      FORGEJO__database__USER: POSTGRES_USER
+      FORGEJO__database__PASSWD: POSTGRES_PASSWORD
+  hints:
+    - Add a domain, then finish the installer there; its database is already filled in. The first account becomes the admin.
+    - Git over SSH needs a public port for ssh (22).
+
+services:
+  forgejo:
+    image: data.forgejo.org/forgejo/forgejo:13.0.2@sha256:fe7a6d15d0ee210042550feb5e35c44fc3c718621648d80d07aa8498ce243448
+    environment:
+      USER_UID: "1000"
+      USER_GID: "1000"
+      FORGEJO__database__DB_TYPE: postgres
+      FORGEJO__server__ROOT_URL: $${{self.PUBLIC_URL}}/
+      FORGEJO__server__DOMAIN: $${{self.PUBLIC_DOMAIN}}
+    volumes:
+      - data:/data
+    expose: [ "3000", "22" ]
+    healthcheck:
+      start_period: 20s
+      interval: 10s
+      x-pyo: { http: { path: /api/healthz, port: 3000 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.1", memory: 256M }
+        limits: { cpus: "1", memory: 1G }
+    x-pyo:
+      expose:
+        - { name: http, port: 3000, as: http }
+        - { name: ssh, port: 22, as: internal }
+
+volumes:
+  data:
+    x-pyo: { sizeGi: 10 }

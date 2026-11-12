@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Excalidraw
+  description: Virtual whiteboard for sketching hand-drawn-style diagrams, in the browser.
+  category: web
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://excalidraw.com
+  version: 1.0.0
+  minPyoVersion: 0.1.0
+  kind: application
+  hints:
+    - Drawings stay in each browser; export or save them to keep them.
+    - Live collaboration needs Excalidraw's separate room server, which isn't included.
+
+services:
+  excalidraw:
+    # Excalidraw publishes builds by commit only.
+    image: docker.io/excalidraw/excalidraw:sha-4bfc5bb@sha256:3d243e15afde6c6511be36b14cef3d095b9d91bcd35ba98aca3b546f4b477df9
+    expose: [ "80" ]
+    healthcheck:
+      start_period: 5s
+      interval: 10s
+      x-pyo: { http: { path: /, port: 80 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.05", memory: 32M }
+        limits: { cpus: "0.25", memory: 128M }
+    x-pyo:
+      expose:
+        - { name: http, port: 80, as: http }

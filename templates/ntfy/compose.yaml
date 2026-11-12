@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: ntfy
+  description: Send push notifications to your phone or desktop with a simple HTTP request.
+  category: messaging
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://ntfy.sh
+  version: 1.0.0
+  appVersion: "2.37.2"
+  minPyoVersion: 0.1.0
+  kind: application
+  hints:
+    - "Needs a domain: the apps subscribe at its address. Publish with curl -d \"hi\" https://<domain>/<topic>."
+    - Anyone can use any topic; set up users with the ntfy user command in its terminal to restrict them.
+
+services:
+  ntfy:
+    image: docker.io/binwiederhier/ntfy:v2.37.2@sha256:1875ddcf815c8a3c981d6d78c67a93452d0abba79b1ab9520b1f5f5238902bd7
+    command: [ serve ]
+    environment:
+      NTFY_BASE_URL: $${{self.PUBLIC_URL}}
+      NTFY_BEHIND_PROXY: "true"
+      NTFY_CACHE_FILE: /var/lib/ntfy/cache.db
+      NTFY_AUTH_FILE: /var/lib/ntfy/auth.db
+      NTFY_ATTACHMENT_CACHE_DIR: /var/lib/ntfy/attachments
+    volumes:
+      - data:/var/lib/ntfy
+    expose: [ "80" ]
+    healthcheck:
+      start_period: 5s
+      interval: 10s
+      x-pyo: { http: { path: /v1/health, port: 80 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.05", memory: 64M }
+        limits: { cpus: "0.5", memory: 256M }
+    x-pyo:
+      expose:
+        - { name: http, port: 80, as: http }
+
+volumes:
+  data:
+    x-pyo: { sizeGi: 2 }

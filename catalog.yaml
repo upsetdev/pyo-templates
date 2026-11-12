@@ -1,0 +1,45 @@
+# Maintainers only: the order templates are listed in. Templates not listed
+# here come last, by name. Featured and hidden are in each template's x-pyo.
+order:
+  - prometheus
+  - wordpress
+  - mongodb
+  - ghost
+  - n8n
+  - ollama
+  - open-webui
+  - vllm
+  - adguard-home
+  - uptime-kuma
+  - mosquitto
+  - mariadb
+  - grafana
+  - rabbitmq
+  - coredns
+  - meilisearch
+  - gitea
+  - vaultwarden
+  - clickhouse
+  - nats
+  - metabase
+  - nginx
+  - nextcloud
+  - plausible
+  - umami
+  - directus
+  - keycloak
+  - mattermost
+  - paperless-ngx
+  - forgejo
+  - listmonk
+  - nocodb
+  - wiki-js
+  - bookstack
+  - litellm
+  - code-server
+  - stirling-pdf
+  - it-tools
+  - excalidraw
+  - ntfy
+  - qdrant
+  - searxng

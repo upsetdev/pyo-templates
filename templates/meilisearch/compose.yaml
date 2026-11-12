@@ -1,0 +1,61 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Meilisearch
+  description: Typo-tolerant search engine with a simple REST API, protected by a master key.
+  category: databases
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://www.meilisearch.com
+  version: 1.0.0
+  appVersion: "1.12"
+  minPyoVersion: 0.1.0
+  kind: service
+  generate:
+    - MEILI_MASTER_KEY
+  fields:
+    - key: masterKey
+      label: Master key
+      type: password
+      required: false
+      sensitive: true
+      envKey: MEILI_MASTER_KEY
+      help: At least 16 characters. Leave empty to generate one.
+  hints:
+    - Create search and admin API keys with the master key; don't ship the master key to browsers.
+services:
+  meilisearch:
+    image: docker.io/getmeili/meilisearch:v1.12@sha256:c9fac23131cca4db95173d41cc50fd5639121ee381795528fdd7522d7978a7b8
+    environment:
+      MEILI_MASTER_KEY:
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - data:/meili_data
+    expose:
+      - "7700"
+    healthcheck:
+      start_period: 10s
+      interval: 10s
+      x-pyo:
+        http:
+          path: /health
+          port: 7700
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+        limits:
+          cpus: "1"
+          memory: 1G
+    x-pyo:
+      expose:
+        - name: http
+          port: 7700
+          as: http
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 10

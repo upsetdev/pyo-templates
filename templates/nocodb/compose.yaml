@@ -1,0 +1,62 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: NocoDB
+  description: Turn a Postgres database into a smart spreadsheet, with forms, views and a REST API.
+  category: developer-tools
+  tier: official
+  author: upsetdev
+  homepage: https://nocodb.com
+  version: 1.0.0
+  appVersion: "2026.10.1"
+  minPyoVersion: 0.1.0
+  kind: application
+  generate:
+    - { key: NC_AUTH_JWT_SECRET, format: long }
+  # Direct, not pooled: its migrations need a session of their own.
+  database:
+    engine: postgres
+    env:
+      DATABASE_URL: DATABASE_URL_DIRECT
+  hints:
+    - Add a domain, then sign up there; the first account becomes the super admin.
+    - Attachments are kept on its volume.
+
+services:
+  nocodb:
+    image: docker.io/nocodb/nocodb:2026.10.1@sha256:8c2dd06896d95e750d55010e529972c22c1ee73b22dce321b1d2de2e7d5cd6ae
+    environment:
+      NC_AUTH_JWT_SECRET:
+      NC_PUBLIC_URL: $${{self.PUBLIC_URL}}
+      NC_DISABLE_TELE: "true"
+      # Only for docker compose: Pyo connects its own database instead.
+      DATABASE_URL: postgres://nocodb:nocodb@db:5432/nocodb
+    volumes:
+      - data:/usr/app/data
+    expose: [ "8080" ]
+    healthcheck:
+      start_period: 30s
+      interval: 10s
+      x-pyo: { http: { path: /api/v1/health, port: 8080 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.25", memory: 256M }
+        limits: { cpus: "1", memory: 1G }
+    x-pyo:
+      expose:
+        - { name: http, port: 8080, as: http }
+    # docker compose only: retries until the local database is up.
+    restart: unless-stopped
+
+  # Try it locally: NC_AUTH_JWT_SECRET=x docker compose --profile local up
+  db:
+    image: docker.io/library/postgres:17-alpine@sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0ef0302ac
+    profiles: [ local ]
+    environment:
+      POSTGRES_DB: nocodb
+      POSTGRES_USER: nocodb
+      POSTGRES_PASSWORD: nocodb
+
+volumes:
+  data:
+    x-pyo: { sizeGi: 5 }

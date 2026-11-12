@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Qdrant
+  description: Vector database and similarity search engine for embeddings, with REST and gRPC APIs.
+  category: databases
+  tier: official
+  author: upsetdev
+  homepage: https://qdrant.tech
+  version: 1.0.0
+  appVersion: "1.20.0"
+  minPyoVersion: 0.1.0
+  kind: service
+  generate:
+    - { key: QDRANT__SERVICE__API_KEY, format: long }
+  hints:
+    - "Other services reach it at http://<service>:6333 (gRPC on 6334), with the api-key header set to QDRANT__SERVICE__API_KEY."
+    - The web UI is at /dashboard on port 6333.
+
+services:
+  qdrant:
+    image: docker.io/qdrant/qdrant:v1.20.0@sha256:9bfc89f9914fc14876a88c05270685921a55b8877b254a98bcc1cc2f0a424cd2
+    environment:
+      QDRANT__SERVICE__API_KEY:
+      QDRANT__TELEMETRY_DISABLED: "true"
+    volumes:
+      - data:/qdrant/storage
+    expose: [ "6333", "6334" ]
+    healthcheck:
+      start_period: 10s
+      interval: 10s
+      x-pyo: { http: { path: /healthz, port: 6333 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.25", memory: 512M }
+        limits: { cpus: "2", memory: 2G }
+    x-pyo:
+      expose:
+        - { name: http, port: 6333, as: internal, protocol: http }
+        - { name: grpc, port: 6334, as: internal }
+
+volumes:
+  data:
+    x-pyo: { sizeGi: 10 }

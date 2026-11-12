@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: vLLM
+  description: Serve an open model from Hugging Face with an OpenAI-compatible API, on NVIDIA GPUs.
+  category: ai
+  tier: official
+  author: upsetdev
+  homepage: https://docs.vllm.ai
+  version: 1.0.0
+  appVersion: "0.33.0"
+  minPyoVersion: 0.1.0
+  kind: service
+  fields:
+    - key: model
+      label: Model
+      type: text
+      default: Qwen/Qwen3-0.6B
+      required: true
+      help: A Hugging Face model id. It has to fit in the GPU's memory.
+    - key: hf-token
+      label: Hugging Face token
+      type: password
+      required: false
+      sensitive: true
+      envKey: HF_TOKEN
+      help: Only for gated models (e.g. Llama).
+  hints:
+    - Needs an NVIDIA GPU server in the cluster.
+    - "The first start downloads the model to the volume: it can take many minutes."
+    - Talk to it at http://<service>:8000/v1, like the OpenAI API.
+services:
+  vllm:
+    image: docker.io/vllm/vllm-openai:v0.33.0@sha256:d825baf9ce4b1b6bfc5ecc7b79880c7e6748c65a72d697ce3d47607aafa84c6e
+    command:
+      - "{{model}}"
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --download-dir
+      - /models
+    environment:
+      HF_HOME: /models/huggingface
+      HF_TOKEN:
+    volumes:
+      - data:/models
+    expose:
+      - "8000"
+    healthcheck:
+      start_period: 600s
+      interval: 15s
+      x-pyo:
+        http:
+          path: /health
+          port: 8000
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "2"
+          memory: 8G
+        limits:
+          cpus: "8"
+          memory: 32G
+    x-pyo:
+      gpu:
+        use: required
+        count: 1
+      expose:
+        - name: api
+          port: 8000
+          as: internal
+          protocol: http
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 100

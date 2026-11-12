@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: MariaDB
+  description: MySQL-compatible relational database with a persistent data volume.
+  category: databases
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://mariadb.org
+  version: 1.0.0
+  appVersion: "11.4"
+  minPyoVersion: 0.1.0
+  kind: service
+  versions:
+    - tag: "10.11"
+      digest: sha256:d769e37960821dfdcf096954f6e7ac89f747e116c1bba98e48edd265dfc7deae
+  generate:
+    - MARIADB_ROOT_PASSWORD
+    - MARIADB_PASSWORD
+  fields:
+    - key: database
+      label: Initial database
+      type: text
+      default: app
+      required: true
+      envKey: MARIADB_DATABASE
+    - key: user
+      label: User
+      type: text
+      default: app
+      required: true
+      envKey: MARIADB_USER
+    - key: password
+      label: User password
+      type: password
+      required: false
+      sensitive: true
+      envKey: MARIADB_PASSWORD
+      help: Leave empty to generate one. The root password is always generated.
+  hints:
+    - Runs as a single replica; replication isn't set up.
+    - Services in the same cluster reach it via its internal hostname.
+services:
+  mariadb:
+    image: docker.io/library/mariadb:11.4@sha256:d1891ede5a559f1086f55053bb8cc1569b0298338c4d72d71725a7f74f6ba620
+    environment:
+      MARIADB_ROOT_PASSWORD:
+      MARIADB_DATABASE: app
+      MARIADB_USER: app
+      MARIADB_PASSWORD:
+    volumes:
+      - data:/var/lib/mysql
+    expose:
+      - "3306"
+    healthcheck:
+      start_period: 20s
+      interval: 10s
+      x-pyo:
+        tcp: 3306
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+        limits:
+          cpus: "1"
+          memory: 1G
+    x-pyo:
+      expose:
+        - name: mariadb
+          port: 3306
+          as: internal
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 10

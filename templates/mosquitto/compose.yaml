@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Mosquitto
+  description: Lightweight MQTT broker for IoT and event messaging.
+  category: messaging
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://mosquitto.org
+  version: 1.0.0
+  appVersion: "2.0.20"
+  minPyoVersion: 0.1.0
+  kind: service
+  fields:
+    - key: anonymous
+      label: Allow anonymous clients
+      type: boolean
+      default: false
+      required: false
+    - key: persistence
+      label: Persist retained messages
+      type: boolean
+      default: true
+      required: false
+  hints:
+    - MQTT is plain TCP. Expose it through a NodePort or LoadBalancer, not an HTTP domain.
+services:
+  mosquitto:
+    image: docker.io/library/eclipse-mosquitto:2.0.20@sha256:21421af7b32bf9ce508e9090c8eb13bb81f410ca778dc205506180a6f862d0eb
+    volumes:
+      - data:/mosquitto/data
+    expose:
+      - "1883"
+    healthcheck:
+      start_period: 5s
+      interval: 10s
+      x-pyo:
+        tcp: 1883
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    x-pyo:
+      expose:
+        - name: mqtt
+          port: 1883
+          as: internal
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 1
+      required: false

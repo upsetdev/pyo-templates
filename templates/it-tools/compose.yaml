@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: IT-Tools
+  description: Handy tools for developers in the browser, from hashes and UUIDs to JWT and cron decoders.
+  category: developer-tools
+  tier: official
+  author: upsetdev
+  homepage: https://it-tools.tech
+  version: 1.0.0
+  minPyoVersion: 0.1.0
+  kind: application
+  hints:
+    - Add a domain to open it; everything runs in the browser and nothing is stored.
+
+services:
+  it-tools:
+    image: docker.io/corentinth/it-tools:2024.10.22-7ca5933@sha256:8b8128748339583ca951af03dfe02a9a4d7363f61a216226fc28030731a5a61f
+    expose: [ "80" ]
+    healthcheck:
+      start_period: 5s
+      interval: 10s
+      x-pyo: { http: { path: /, port: 80 } }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.05", memory: 32M }
+        limits: { cpus: "0.25", memory: 128M }
+    x-pyo:
+      expose:
+        - { name: http, port: 80, as: http }

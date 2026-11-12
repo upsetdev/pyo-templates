@@ -1,0 +1,62 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: n8n
+  description: "Workflow automation: connect APIs and apps with a visual editor."
+  category: developer-tools
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://n8n.io
+  version: 1.0.0
+  appVersion: "1.72.1"
+  minPyoVersion: 0.1.0
+  kind: service
+  featured: true
+  generate:
+    - N8N_ENCRYPTION_KEY
+  fields:
+    - key: timezone
+      label: Timezone
+      type: text
+      default: UTC
+      required: true
+      envKey: GENERIC_TIMEZONE
+      help: Used by schedule triggers, e.g. Europe/Berlin.
+  hints:
+    - Add an HTTPS domain so webhooks and OAuth callbacks reach it.
+    - The encryption key protects saved credentials; keep it if you redeploy.
+services:
+  n8n:
+    image: docker.io/n8nio/n8n:1.72.1@sha256:d4821fb27106870a987145aa1914bdfc9f253251a751a29a76c0f8d5c2af6e24
+    environment:
+      N8N_ENCRYPTION_KEY:
+      GENERIC_TIMEZONE: UTC
+    volumes:
+      - data:/home/node/.n8n
+    expose:
+      - "5678"
+    healthcheck:
+      start_period: 20s
+      interval: 10s
+      x-pyo:
+        http:
+          path: /healthz
+          port: 5678
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+        limits:
+          cpus: "1"
+          memory: 1G
+    x-pyo:
+      expose:
+        - name: http
+          port: 5678
+          as: http
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 5

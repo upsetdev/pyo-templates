@@ -1,0 +1,692 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pyo template (compose.yaml)",
+  "description": "A template: a Compose file you can run with docker compose, plus Pyo's data in x-pyo. Only the subset described here is allowed; scripts/compose.ts turns it into an index.json entry (template.schema.json).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "x-pyo",
+    "services"
+  ],
+  "properties": {
+    "x-pyo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "category",
+        "tier",
+        "author",
+        "version",
+        "minPyoVersion",
+        "kind"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "description": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 160
+        },
+        "category": {
+          "enum": [
+            "databases",
+            "caches",
+            "storage",
+            "networking",
+            "monitoring",
+            "messaging",
+            "developer-tools",
+            "web",
+            "ai",
+            "other"
+          ]
+        },
+        "logo": {
+          "type": "string",
+          "const": "logo.svg",
+          "description": "An SVG next to this file. Without one, Pyo shows a generic icon."
+        },
+        "tier": {
+          "enum": [
+            "official",
+            "community"
+          ]
+        },
+        "author": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$",
+          "maxLength": 39,
+          "description": "GitHub username."
+        },
+        "minPyoVersion": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "description": "The template's own version (semver), not the app's. Bump it on every change: patch for an image bump, minor for a new option, major for a change that needs people to act. Pyo records it with each service deployed from the template.",
+          "examples": [
+            "1.0.0"
+          ]
+        },
+        "appVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "The app's version that the default image tag runs, as people know it (0.107.55 for the tag v0.107.55). Leave it out when the tag doesn't say."
+        },
+        "upgrade": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Reserved: how services on an earlier version move to this one. Pyo doesn't read it yet.",
+          "properties": {
+            "breaking": {
+              "type": "boolean",
+              "description": "Moving to this version needs people to act (a data migration, a changed variable)."
+            },
+            "upgradeFrom": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "description": "The template versions that can move to this one, as a semver range (>=1.2.0 <2.0.0)."
+            },
+            "notes": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000,
+              "description": "What changes, shown before upgrading."
+            }
+          }
+        },
+        "homepage": {
+          "type": "string",
+          "pattern": "^https://[^\\s]+$",
+          "maxLength": 200,
+          "description": "The upstream project's website."
+        },
+        "kind": {
+          "enum": [
+            "application",
+            "service"
+          ],
+          "description": "application: something people open (a site, an app). service: something other services use."
+        },
+        "featured": {
+          "type": "boolean",
+          "description": "Maintainers only: shown first in galleries."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "Maintainers only: left out of galleries; services already using it keep working."
+        },
+        "versions": {
+          "type": "array",
+          "description": "More versions offered in the deploy form, after the image's own tag (the default). bun run pin fills in digests.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tag",
+              "digest"
+            ],
+            "properties": {
+              "tag": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Quote it: 17.2 alone is a number in YAML."
+              },
+              "digest": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              }
+            }
+          }
+        },
+        "generate": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "Variables Pyo makes once, when deploying (random secrets). Each is in the service's environment with no value.",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "key"
+                ],
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                  },
+                  "format": {
+                    "enum": [
+                      "password",
+                      "long",
+                      "hex-32",
+                      "base64-32"
+                    ],
+                    "description": "password (default): 24 letters and digits. long: 64 letters and digits. hex-32: 32 random bytes as 64 hex digits. base64-32: 32 random bytes, base64 (e.g. an AES-256 key)."
+                  },
+                  "prefix": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_:.-]{1,16}$",
+                    "description": "Put before the value, e.g. sk- or base64:."
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "database": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "engine",
+            "env"
+          ],
+          "description": "A database it needs. When deploying, people pick one of their team's or make one, and Pyo connects it: each key in env becomes one of the service's variables, set from the database's own (its Connect values, or their parts).",
+          "properties": {
+            "engine": {
+              "enum": [
+                "mysql",
+                "postgres",
+                "kv"
+              ]
+            },
+            "env": {
+              "type": "object",
+              "minProperties": 1,
+              "propertyNames": {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^[A-Z_]+(:[A-Z_]+)*$",
+                "description": "One of the database's variables, or several joined by \":\" (MYSQL_HOST:MYSQL_PORT is host:port)."
+              }
+            },
+            "extensions": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9_-]+$"
+              },
+              "description": "Extensions it needs, by name from Pyo's catalog: Postgres extensions, or KV modules (valkey-json, valkey-bloom, valkey-search). Pyo turns on the ones it manages: with a new database, or, for an existing one, when people agree in the deploy form. The other Postgres ones (pg_trgm, citext, pgcrypto…) the app creates itself with CREATE EXTENSION.",
+              "examples": [
+                [
+                  "pg_trgm"
+                ]
+              ]
+            }
+          }
+        },
+        "fields": {
+          "type": "array",
+          "description": "What people can set in the deploy form. The version picker comes from source.versions.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key",
+              "label",
+              "type",
+              "required"
+            ],
+            "properties": {
+              "key": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "enum": [
+                  "text",
+                  "number",
+                  "password",
+                  "select",
+                  "boolean"
+                ]
+              },
+              "default": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "sensitive": {
+                "type": "boolean"
+              },
+              "envKey": {
+                "type": "string"
+              },
+              "help": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "hints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "databases": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "engine",
+              "env"
+            ],
+            "description": "A database it needs. When deploying, people pick one of their team's or make one, and Pyo connects it: each key in env becomes one of the service's variables, set from the database's own (its Connect values, or their parts).",
+            "properties": {
+              "engine": {
+                "enum": [
+                  "mysql",
+                  "postgres",
+                  "kv"
+                ]
+              },
+              "env": {
+                "type": "object",
+                "minProperties": 1,
+                "propertyNames": {
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "pattern": "^[A-Z_]+(:[A-Z_]+)*$",
+                  "description": "One of the database's variables, or several joined by \":\" (MYSQL_HOST:MYSQL_PORT is host:port)."
+                }
+              },
+              "extensions": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9_-]+$"
+                },
+                "description": "Extensions it needs, by name from Pyo's catalog: Postgres extensions, or KV modules (valkey-json, valkey-bloom, valkey-search). Pyo turns on the ones it manages: with a new database, or, for an existing one, when people agree in the deploy form. The other Postgres ones (pg_trgm, citext, pgcrypto…) the app creates itself with CREATE EXTENSION.",
+                "examples": [
+                  [
+                    "pg_trgm"
+                  ]
+                ]
+              }
+            }
+          },
+          "description": "Several databases, one per engine (e.g. Postgres and KV)."
+        }
+      }
+    },
+    "services": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 8,
+      "propertyNames": {
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+        "maxLength": 40
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "image"
+        ],
+        "properties": {
+          "image": {
+            "type": "string",
+            "description": "registry/repository:tag@sha256:digest. The tag is the default version."
+          },
+          "command": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "type": [
+                "string",
+                "number"
+              ]
+            },
+            "description": "Arguments to the image's entrypoint (no shell). {{key}} takes a field's value."
+          },
+          "entrypoint": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "type": [
+                "string",
+                "number"
+              ]
+            }
+          },
+          "environment": {
+            "type": "object",
+            "propertyNames": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+            },
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            },
+            "description": "KEY: value. No value: a secret, generated (x-pyo.generate) or set in the deploy form (a sensitive field). A variable a database sets may have a value for local testing; Pyo replaces it."
+          },
+          "volumes": {
+            "type": "array",
+            "maxItems": 1,
+            "items": {
+              "type": [
+                "string",
+                "object"
+              ]
+            }
+          },
+          "expose": {
+            "type": "array",
+            "items": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "pattern": "^\\d+(/(tcp|udp))?$"
+            }
+          },
+          "depends_on": {
+            "type": [
+              "array",
+              "object"
+            ]
+          },
+          "profiles": {
+            "type": "array",
+            "items": {
+              "const": "local"
+            },
+            "description": "[local]: only for trying the template with docker compose; Pyo ignores the service."
+          },
+          "restart": {
+            "type": "string",
+            "description": "For docker compose only; Pyo always restarts services."
+          },
+          "healthcheck": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "test": {
+                "type": [
+                  "string",
+                  "array"
+                ]
+              },
+              "interval": {
+                "type": "string",
+                "pattern": "^(\\d+h)?(\\d+m)?(\\d+s)?$",
+                "description": "Whole seconds or more, e.g. 10s, 1m30s."
+              },
+              "timeout": {
+                "type": "string",
+                "pattern": "^(\\d+h)?(\\d+m)?(\\d+s)?$",
+                "description": "Whole seconds or more, e.g. 10s, 1m30s."
+              },
+              "retries": {
+                "type": "integer"
+              },
+              "start_period": {
+                "type": "string",
+                "pattern": "^(\\d+h)?(\\d+m)?(\\d+s)?$",
+                "description": "Whole seconds or more, e.g. 10s, 1m30s."
+              },
+              "start_interval": {
+                "type": "string",
+                "pattern": "^(\\d+h)?(\\d+m)?(\\d+s)?$",
+                "description": "Whole seconds or more, e.g. 10s, 1m30s."
+              },
+              "disable": {
+                "type": "boolean"
+              },
+              "x-pyo": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "Pyo's own probe instead of a command: http or tcp.",
+                "properties": {
+                  "http": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "path",
+                      "port"
+                    ],
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "pattern": "^/"
+                      },
+                      "port": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 65535
+                      }
+                    }
+                  },
+                  "tcp": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 65535
+                  }
+                }
+              }
+            }
+          },
+          "deploy": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "replicas": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 20
+              },
+              "resources": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "limits",
+                  "reservations"
+                ],
+                "properties": {
+                  "limits": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "cpus",
+                      "memory"
+                    ],
+                    "properties": {
+                      "cpus": {
+                        "type": [
+                          "string",
+                          "number"
+                        ],
+                        "description": "CPUs, e.g. \"0.25\" (250 millicores)."
+                      },
+                      "memory": {
+                        "type": "string",
+                        "pattern": "^\\d+(M|G)$",
+                        "description": "e.g. 256M or 2G."
+                      }
+                    }
+                  },
+                  "reservations": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "cpus",
+                      "memory"
+                    ],
+                    "properties": {
+                      "cpus": {
+                        "type": [
+                          "string",
+                          "number"
+                        ],
+                        "description": "CPUs, e.g. \"0.25\" (250 millicores)."
+                      },
+                      "memory": {
+                        "type": "string",
+                        "pattern": "^\\d+(M|G)$",
+                        "description": "e.g. 256M or 2G."
+                      }
+                    },
+                    "description": "What Pyo requests for it."
+                  }
+                }
+              }
+            }
+          },
+          "x-pyo": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "workload": {
+                "enum": [
+                  "Deployment",
+                  "StatefulSet"
+                ],
+                "description": "Default: StatefulSet with a volume, Deployment without."
+              },
+              "gpu": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "use",
+                  "count"
+                ],
+                "description": "NVIDIA GPUs. optional: offered when the cluster has a GPU server, and it runs on CPU otherwise. required: it only deploys where there are GPUs.",
+                "properties": {
+                  "use": {
+                    "enum": [
+                      "optional",
+                      "required"
+                    ]
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8,
+                    "description": "Whole GPUs to ask for, all on one server."
+                  }
+                }
+              },
+              "expose": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "name",
+                    "port"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9-]+$",
+                      "maxLength": 15
+                    },
+                    "port": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 65535
+                    },
+                    "as": {
+                      "enum": [
+                        "http",
+                        "tcp",
+                        "internal"
+                      ],
+                      "description": "http: a web port that can get a domain. tcp: a public TCP/UDP port (a LoadBalancer). internal (default): inside the cluster only."
+                    },
+                    "protocol": {
+                      "enum": [
+                        "http",
+                        "tcp",
+                        "udp"
+                      ],
+                      "description": "Default: http for as: http, else what expose says (tcp unless /udp)."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "volumes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "x-pyo": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sizeGi"
+            ],
+            "properties": {
+              "sizeGi": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2000
+              },
+              "required": {
+                "type": "boolean",
+                "description": "false: people may deploy it without a volume. Default true."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "pyo-templates",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "validate": "bun run scripts/validate.ts",
+    "build": "bun run scripts/build.ts",
+    "pin": "bun run scripts/pin-digests.ts",
+    "check-pr": "bun run scripts/check-pr.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4"
+  }
+}

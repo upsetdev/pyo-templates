@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Vaultwarden
+  description: Bitwarden-compatible password manager server, light enough for any server.
+  category: other
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://github.com/dani-garcia/vaultwarden
+  version: 1.0.0
+  appVersion: "1.32.7"
+  minPyoVersion: 0.1.0
+  kind: service
+  fields:
+    - key: signups
+      label: Allow new sign-ups
+      type: boolean
+      default: true
+      required: false
+      envKey: SIGNUPS_ALLOWED
+      help: Turn off once your accounts exist.
+  hints:
+    - "Bitwarden clients need HTTPS: add a domain before you sign up."
+services:
+  vaultwarden:
+    image: docker.io/vaultwarden/server:1.32.7@sha256:7a0aa23c0947be3582898deb5170ea4359493ed9a76af2badf60a7eb45ac36af
+    environment:
+      SIGNUPS_ALLOWED: "true"
+    volumes:
+      - data:/data
+    expose:
+      - "80"
+    healthcheck:
+      start_period: 10s
+      interval: 10s
+      x-pyo:
+        http:
+          path: /alive
+          port: 80
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    x-pyo:
+      expose:
+        - name: http
+          port: 80
+          as: http
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 1

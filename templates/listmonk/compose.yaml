@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: listmonk
+  description: Newsletter and mailing list manager with campaigns, templates and analytics, on Postgres.
+  category: messaging
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://listmonk.app
+  version: 1.0.0
+  appVersion: "6.2.0"
+  minPyoVersion: 0.1.0
+  kind: application
+  generate:
+    - LISTMONK_ADMIN_PASSWORD
+  fields:
+    - key: admin
+      label: Admin user
+      type: text
+      default: admin
+      required: true
+      envKey: LISTMONK_ADMIN_USER
+  # Its parts one by one, straight to the primary (it installs and
+  # upgrades its schema on every start).
+  database:
+    engine: postgres
+    extensions: [pgcrypto]
+    env:
+      LISTMONK_db__host: POSTGRES_HOST
+      LISTMONK_db__port: POSTGRES_PORT
+      LISTMONK_db__user: POSTGRES_USER
+      LISTMONK_db__password: POSTGRES_PASSWORD
+      LISTMONK_db__database: POSTGRES_DATABASE
+  hints:
+    - Add a domain, then sign in as the admin user with LISTMONK_ADMIN_PASSWORD from its variables.
+    - Set the root URL and an SMTP server under Settings before sending.
+
+services:
+  listmonk:
+    image: docker.io/listmonk/listmonk:v6.2.0@sha256:f535d59e14991337a9f2d570273685378ae86b0d7698c3e00da444e3bc205286
+    # As its own compose file: install once, upgrade, then run, from variables only.
+    command: [ sh, -c, "./listmonk --install --idempotent --yes --config '' && ./listmonk --upgrade --yes --config '' && ./listmonk --config ''" ]
+    environment:
+      LISTMONK_app__address: 0.0.0.0:9000
+      LISTMONK_db__ssl_mode: disable
+      LISTMONK_ADMIN_USER: admin
+      LISTMONK_ADMIN_PASSWORD:
+      TZ: Etc/UTC
+      # Only for docker compose: Pyo connects its own database instead.
+      LISTMONK_db__host: db
+      LISTMONK_db__port: "5432"
+      LISTMONK_db__user: listmonk
+      LISTMONK_db__password: listmonk
+      LISTMONK_db__database: listmonk
+    volumes:
+      - data:/listmonk/uploads
+    expose: [ "9000" ]
+    healthcheck:
+      start_period: 20s
+      interval: 10s
+      x-pyo: { tcp: 9000 }
+    deploy:
+      replicas: 1
+      resources:
+        reservations: { cpus: "0.1", memory: 128M }
+        limits: { cpus: "1", memory: 512M }
+    x-pyo:
+      expose:
+        - { name: http, port: 9000, as: http }
+    # docker compose only: retries until the local database is up.
+    restart: unless-stopped
+
+  # Try it locally: LISTMONK_ADMIN_PASSWORD=password docker compose --profile local up
+  db:
+    image: docker.io/library/postgres:17-alpine@sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0ef0302ac
+    profiles: [ local ]
+    environment:
+      POSTGRES_DB: listmonk
+      POSTGRES_USER: listmonk
+      POSTGRES_PASSWORD: listmonk
+
+volumes:
+  data:
+    x-pyo: { sizeGi: 2 }

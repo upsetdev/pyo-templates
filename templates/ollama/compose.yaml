@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Ollama
+  description: Run open models like Llama, Qwen and Gemma behind a local HTTP API.
+  category: ai
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://ollama.com
+  version: 1.0.0
+  appVersion: "0.40.14"
+  minPyoVersion: 0.1.0
+  kind: service
+  featured: true
+  versions:
+    - tag: 0.5.4
+      digest: sha256:18bfb1d605604fd53dcad20d0556df4c781e560ebebcd923454d627c994a0e37
+  hints:
+    - Uses an NVIDIA GPU when its cluster has one, and runs on CPU otherwise.
+    - Pull a model with POST /api/pull before the first request. Models are kept on the volume.
+    - "Models are large: size the volume, memory and GPU memory for the ones you use."
+services:
+  ollama:
+    image: docker.io/ollama/ollama:0.40.14@sha256:ebaef4f4c5d93660e1f25f8ad085a112f51ccfb0e8458073e71793959dba91c9
+    volumes:
+      - data:/root/.ollama
+    expose:
+      - "11434"
+    healthcheck:
+      start_period: 10s
+      interval: 10s
+      x-pyo:
+        http:
+          path: /
+          port: 11434
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "1"
+          memory: 2G
+        limits:
+          cpus: "4"
+          memory: 8G
+    x-pyo:
+      gpu:
+        use: optional
+        count: 1
+      expose:
+        - name: api
+          port: 11434
+          as: internal
+          protocol: http
+volumes:
+  data:
+    x-pyo:
+      sizeGi: 30

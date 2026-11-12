@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=../../schema.json
+x-pyo:
+  name: Nginx
+  description: Fast web server for static files, a starting point for your own image.
+  category: web
+  logo: logo.svg
+  tier: official
+  author: upsetdev
+  homepage: https://nginx.org
+  version: 1.0.0
+  appVersion: "1.27"
+  minPyoVersion: 0.1.0
+  kind: application
+  hints:
+    - Serves the default welcome page. Build an image FROM nginx with your files to serve your site.
+services:
+  nginx:
+    image: docker.io/library/nginx:1.27@sha256:6784fb0834aa7dbbe12e3d7471e69c290df3e6ba810dc38b34ae33d3c1c05f7d
+    expose:
+      - "80"
+    healthcheck:
+      start_period: 10s
+      interval: 10s
+      x-pyo:
+        http:
+          path: /
+          port: 80
+    deploy:
+      replicas: 2
+      resources:
+        reservations:
+          cpus: "0.05"
+          memory: 32M
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    x-pyo:
+      expose:
+        - name: http
+          port: 80
+          as: http
