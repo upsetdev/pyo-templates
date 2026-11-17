@@ -48,15 +48,15 @@ option, major for a breaking change): Pyo records it with each service.
 ## How Pyo uses this
 
 `bun run build` converts each `compose.yaml` (`scripts/compose.ts`) into
-`dist/v1/index.json`, plus the logos. On every push to `main`, CI publishes
-`dist/` to GitHub Pages.
+`dist/v1/index.json`, plus the logos.
 
 Pyo bundles a snapshot of that build: its `dash/scripts/sync-templates.ts`
 copies `index.json` and the logos into the dashboard
 (`dash/src/lib/pyo/catalog.json`), so templates work offline and on fresh
-installs. The website
-([pyo-web](https://github.com/upsetdev/pyo-web)) syncs from the same build. Pyo
-only reads the JSON, so it never parses YAML or Compose files from the internet.
+installs. Pyo's CI fails when that snapshot doesn't match `main`. The website
+([pyo-web](https://github.com/upsetdev/pyo-web)) builds `main` each time it
+deploys, and a template change on `main` starts a new deploy. Pyo only reads
+the JSON, so it never parses YAML or Compose files from the internet.
 
 ## Trademarks
 

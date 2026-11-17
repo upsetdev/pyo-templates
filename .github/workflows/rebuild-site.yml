@@ -1,0 +1,44 @@
+# Rebuilds pyo.dev, whose /templates shows this repo's templates. pyo-web is
+# built and deployed by Cloudflare's Workers Builds, and its build clones and
+# builds this repo's main branch. A template change here asks Workers Builds
+# for a new build through a deploy hook: its URL is the secret
+# PYO_WEB_DEPLOY_HOOK (Cloudflare dashboard > Workers & Pages > pyo-web >
+# Settings > Builds > Deploy Hooks).
+name: Rebuild the site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "templates/**"
+      - "catalog.yaml"
+      - "scripts/build.ts"
+      - "scripts/compose.ts"
+      - "scripts/extensions.ts"
+      - "scripts/lib.ts"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask Workers Builds to build pyo-web
+        env:
+          HOOK: ${{ secrets.PYO_WEB_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::The secret PYO_WEB_DEPLOY_HOOK isn't set, so pyo.dev wasn't rebuilt. Make a deploy hook for pyo-web in Cloudflare (Workers & Pages > pyo-web > Settings > Builds > Deploy Hooks) and save its URL as this repo's PYO_WEB_DEPLOY_HOOK secret."
+            exit 1
+          fi
+          case "$HOOK" in
+            https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/*) ;;
+            *) echo "::error::PYO_WEB_DEPLOY_HOOK isn't a Workers Builds deploy hook URL."; exit 1 ;;
+          esac
+          out=$(curl -fsS -X POST --retry 3 --max-time 30 "$HOOK") || { echo "::error::The deploy hook didn't answer. Check that it still exists in Cloudflare."; exit 1; }
+          if [ "$(echo "$out" | jq -r '.success // empty' 2>/dev/null)" = false ]; then
+            echo "::error::Cloudflare refused the build: $(echo "$out" | jq -c '.errors')"
+            exit 1
+          fi
+          echo "Build started: $(echo "$out" | jq -r '.result.build_uuid // .build_uuid // "see the Cloudflare dashboard"' 2>/dev/null)"
